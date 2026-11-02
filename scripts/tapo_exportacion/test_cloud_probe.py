@@ -1,9 +1,13 @@
+import hashlib
+import tempfile
 import unittest
 from collections import Counter
+from pathlib import Path
 from unittest.mock import patch
 
 from cloud_probe import (
     CloudHTTPError,
+    apk_path,
     checked_host,
     cloud_call,
     count_sensors,
@@ -15,6 +19,20 @@ from cloud_probe import (
 
 
 class CloudProbeTest(unittest.TestCase):
+    def test_apk_path_verifies_file_and_rejects_missing_or_modified_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            apk = Path(directory) / "test.apk"
+            with patch("cloud_probe.APK_PATH", apk), patch(
+                "cloud_probe.APK_SHA256", hashlib.sha256(b"test").hexdigest()
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    apk_path()
+                apk.write_bytes(b"test")
+                self.assertEqual(apk_path(), apk)
+                apk.write_bytes(b"modified")
+                with self.assertRaisesRegex(ValueError, "no coincide"):
+                    apk_path()
+
     @patch("cloud_probe.discover_iot_services", return_value=(("nbu.iot-app-server.app",), "ok"))
     @patch("cloud_probe.cloud_call")
     def test_login_and_device_list(self, cloud_call, discover):

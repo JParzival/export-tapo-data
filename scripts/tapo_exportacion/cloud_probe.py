@@ -24,6 +24,7 @@ MAX_RESPONSE = 2_000_000
 SAFE_MODEL_CHARS = frozenset(string.ascii_letters + string.digits + " _.-/")
 SERVICE_IDS = ("nbu.iot-app-server.app", "nbu.iot-cloud-gateway.app", "nbu.iot-security.appdevice")
 APK_SHA256 = "a01fd475f378687d4be684741161df0f5e3daa274acb15303c44c0198b37b88f"
+APK_PATH = Path(__file__).resolve().parents[2] / "assets" / "tapo" / "tapo-3.22.105.apk"
 V2_HOST = "n-wap.i.tplinkcloud.com"
 TRUSTED_CERTS = {
     "8d27224dac20c2db8a380e3103b4e383c481ee41b681908579aee416761da289",
@@ -97,11 +98,10 @@ def get_json(
 
 def apk_path() -> Path:
     """Verify the entire APK before reading application identity or certificates."""
-    apk = Path.home() / ".local/share/rea/targets/tapo-3.22.105/base.apk"
-    with apk.open("rb") as source:
+    with APK_PATH.open("rb") as source:
         if hashlib.file_digest(source, "sha256").hexdigest() != APK_SHA256:
             raise ValueError("La APK base no coincide con la versión verificada.")
-    return apk
+    return APK_PATH
 
 
 def app_identity() -> tuple[str, str, str]:
@@ -266,6 +266,7 @@ def mfa_process_id(result: dict[str, Any]) -> str | None:
 def verify_mfa(
     host: str, username: str, password: str, terminal: str, identity: tuple[str, str, str],
     context: ssl.SSLContext, login_result: dict[str, Any],
+    code_prompt: Callable[[int], str] | None = None,
 ) -> tuple[dict[str, Any] | None, str]:
     """Request one email code or accept a TOTP code, then verify it once."""
     process_id = mfa_process_id(login_result)
@@ -284,15 +285,18 @@ def verify_mfa(
         if error != 0:
             detail = f"código {error}" if type(error) is int else "error de respuesta"
             return None, f"envío del código por correo: {detail}"
-        print("Tapo ha aceptado la solicitud de código. Revisa el correo de tu cuenta.")
+        if code_prompt is None:
+            print("Tapo ha aceptado la solicitud de código. Revisa el correo de tu cuenta.")
         mfa_type = 2
     elif 3 in methods:
-        print("Introduce el código de tu aplicación de autenticación.")
+        if code_prompt is None:
+            print("Introduce el código de tu aplicación de autenticación.")
         mfa_type = 3
     else:
         available = sorted(value for value in methods if type(value) is int and 0 <= value <= 9)
         return None, f"verificación sin correo ni TOTP disponible; tipos: {available}"
-    code = getpass.getpass("Código de verificación (no se mostrará): ").strip()
+    code = (code_prompt(mfa_type) if code_prompt else
+            getpass.getpass("Código de verificación (no se mostrará): ")).strip()
     if not re.fullmatch(r"[0-9]{4,12}", code):
         return None, "código de verificación no válido; no se ha enviado"
     params = {
@@ -342,6 +346,7 @@ def mfa_response_shape(response: dict[str, Any]) -> str:
 def discover_iot_services(
     username: str, password: str, terminal: str, legacy_token: str,
     on_connected: ConnectedCallback | None = None,
+    code_prompt: Callable[[int], str] | None = None,
 ) -> tuple[tuple[str, ...] | None, str]:
     """Discover the regional server and try the existing session before a V2 login."""
     try:
@@ -386,9 +391,9 @@ def discover_iot_services(
                 if mfa_process_id(login_result) is None:
                     diagnostic = mfa_response_shape(login)
                     return None, f"verificación incompleta (sin enviar código); {diagnostic}"
-                login_result, status = verify_mfa(
-                    account_host, username, password, terminal, identity, context, login_result
-                )
+                args = (account_host, username, password, terminal, identity, context, login_result)
+                login_result, status = (verify_mfa(*args, code_prompt=code_prompt)
+                                        if code_prompt else verify_mfa(*args))
                 if login_result is None:
                     return None, status
             elif error != 0:
@@ -405,6 +410,8 @@ def discover_iot_services(
             response = signed_v2_call(host, "/api/v2/common/getAppServiceUrl", {
                 "serviceIds": list(SERVICE_IDS),
             }, terminal, identity, context, active_token)
+    except FileNotFoundError:
+        return None, "APK verificada ausente en assets/tapo/tapo-3.22.105.apk"
     except CloudHTTPError as exc:
         return None, f"HTTP {exc.status}"
     except (OSError, ValueError, KeyError):
@@ -439,6 +446,7 @@ def discover_iot_services(
 
 def probe(
     username: str, password: str, on_connected: ConnectedCallback | None = None,
+    code_prompt: Callable[[int], str] | None = None,
 ) -> tuple[Counter[tuple[str, str]], tuple[str, ...] | None, str]:
     """Log in and summarize device types without returning credentials or tokens."""
     if not username or not password:
@@ -474,7 +482,11 @@ def probe(
         (safe_label(device.get("deviceType")), safe_label(device.get("deviceModel")))
         for device in device_list
     )
-    if on_connected is None:
+    if code_prompt is not None:
+        services, status = discover_iot_services(
+            username, password, terminal, token, on_connected, code_prompt
+        )
+    elif on_connected is None:
         services, status = discover_iot_services(username, password, terminal, token)
     else:
         services, status = discover_iot_services(username, password, terminal, token, on_connected)
