@@ -18,7 +18,7 @@ construida sobre un prototipo en Python.
 
 ## De los sensores a tus datos
 
-La aplicación guía la conexión, la selección de un sensor **T310 o T315** y la solicitud de un informe de temperatura y humedad por correo. También se conserva el prototipo de consola. Todavía no descarga los archivos adjuntos automáticamente.
+La aplicación guía la conexión, la selección de uno o varios sensores **T310 o T315** y la solicitud de informes de temperatura y humedad por correo. También se conserva el prototipo de consola. Todavía no descarga los archivos adjuntos automáticamente.
 
 La integración utiliza una API interna de Tapo y una versión concreta de su APK; ambas pueden cambiar.
 
@@ -58,8 +58,10 @@ La simulación crea un servidor local y no envía correos ni modifica histórico
 
 En Windows, haz doble clic en **`Abrir Tapo Data.cmd`**, en la carpeta del proyecto. Usa el entorno `.venv` si existe y, si no, el Python disponible en el sistema. Necesita Python 3.12 o posterior, Tkinter y la base de zonas horarias; si falta algún requisito, muestra un aviso. La ventana de comandos permanece abierta mientras se usa la aplicación.
 
-La interfaz está actualmente en español y no guarda la contraseña ni los códigos de verificación.
+La interfaz permite elegir español o inglés con el selector **ES / EN** y no guarda la contraseña ni los códigos de verificación. El idioma se mantiene durante la sesión.
+El icono de Tapo se obtiene de la APK local verificada; la aplicación es independiente y no está afiliada a Tapo ni a TP-Link.
 En el paso de exportación, selecciona las fechas inicial y final en sus calendarios; la fecha final está incluida.
+Puedes seleccionar varios sensores: se solicita un informe por cada uno, secuencialmente y con las mismas fechas y zona horaria. Se muestra el resultado individual. Si no puede confirmarse una solicitud, el proceso se detiene y señala los sensores que aún no se han enviado; comprueba el correo antes de volver a solicitar el informe incierto. Al volver a la selección solo se marcan automáticamente los sensores aún no enviados.
 Para ejecutar también las pruebas de la interfaz, es necesaria una sesión gráfica y una instalación operativa de Tk; sin ella, esas pruebas se omiten.
 
 ### Solicita un informe experimental

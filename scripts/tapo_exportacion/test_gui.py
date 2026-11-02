@@ -49,12 +49,12 @@ class DesktopWorkflowTest(unittest.TestCase):
         window.start_entry.set_date(date(2026, 1, 1))
         window.end_entry.set_date(date(2026, 1, 1))
 
-        with patch.object(app.messagebox, "askyesno", return_value=False), patch.object(
+        with patch.object(window, "confirm_requests", return_value=False), patch.object(
             window, "run_worker"
         ) as worker:
             window.submit()
             worker.assert_not_called()
-        with patch.object(app.messagebox, "askyesno", return_value=True), patch.object(
+        with patch.object(window, "confirm_requests", return_value=True), patch.object(
             window, "run_worker", side_effect=lambda kind, job: captured.append((kind, job))
         ):
             window.submit()
@@ -98,11 +98,12 @@ class DesktopWorkflowTest(unittest.TestCase):
                                      [{"thingName": "fake", "model": "T310"}])
         window.show_sensors()
         window.show_export()
+        window.report_range = "2026-01-01 a 2026-01-01 · Europe/Madrid"
         window.set_busy("Enviando")
-        window.events.put(("exported", -1))
+        window.events.put(("exported", [("rejected", -1)]))
         window.poll_events()
-        self.assertIn("rechazó", window.status.cget("text"))
-        self.assertNotIn("aceptada", window.status.cget("text"))
+        self.assertIn("Rechazada", window.results.get("1.0", tk.END))
+        self.assertNotIn("Aceptada", window.results.get("1.0", tk.END))
 
     def test_export_controls_fit_minimum_window(self):
         window = self.window
@@ -119,6 +120,17 @@ class DesktopWorkflowTest(unittest.TestCase):
                        window.action, window.status):
             with self.subTest(widget=widget):
                 self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), bottom)
+
+    def test_sensor_controls_fit_minimum_window(self):
+        window = self.window
+        window.geometry("900x680")
+        sensors = [{"thingName": f"fake-{i}", "model": "T310"} for i in range(6)]
+        window.session = app.Session("host", "token", "terminal", "app", None, sensors)
+        window.show_sensors()
+        window.update_idletasks()
+        bottom = window.main.winfo_rooty() + window.main.winfo_height()
+        self.assertLessEqual(window.action.winfo_rooty() + window.action.winfo_height(), bottom)
+        self.assertLessEqual(window.account_back.winfo_rooty() + window.account_back.winfo_height(), bottom)
 
     def test_worker_flow_acceptance_without_real_network(self):
         window = self.window
@@ -141,14 +153,68 @@ class DesktopWorkflowTest(unittest.TestCase):
         window.show_export()
         window.start_entry.set_date(date(2026, 1, 1))
         window.end_entry.set_date(date(2026, 1, 1))
-        with patch.object(app.messagebox, "askyesno", return_value=True), patch.object(
+        with patch.object(window, "confirm_requests", return_value=True), patch.object(
             app.export_tapo, "request_report", return_value=0
         ) as request:
             window.submit()
             wait_for(lambda: not window.busy)
             request.assert_called_once()
-        self.assertIn("Solicitud aceptada", window.status.cget("text"))
-        self.assertIn("aún no están verificados", window.status.cget("text"))
+        self.assertEqual(window.view, "results")
+        self.assertIn("Aceptada", window.results.get("1.0", tk.END))
+
+    def test_multiple_selection_and_confirmation(self):
+        window = self.window
+        window.email = "user@example.invalid"
+        sensors = [{"thingName": f"fake-{n}", "model": "T310", "nickname": f"Sensor {n}"}
+                   for n in range(3)]
+        window.session = app.Session("host", "token", "terminal", "app", None, sensors)
+        window.show_sensors()
+        window.sensor_choice.selection_clear(0, tk.END)
+        window.show_export()
+        self.assertEqual(window.view, "sensors")
+        self.assertIn("al menos", window.selection_status.cget("text"))
+        window.sensor_choice.selection_set(0)
+        window.sensor_choice.selection_set(2)
+        window.show_export()
+        self.assertEqual(window.sensors, [sensors[0], sensors[2]])
+        window.start_entry.set_date(date(2026, 1, 1))
+        window.end_entry.set_date(date(2026, 1, 1))
+        window.back_to_sensors()
+        self.assertEqual(window.sensor_choice.curselection(), (0, 2))
+        window.show_export()
+        self.assertEqual(window.start_entry.get(), "2026-01-01")
+        self.assertEqual(window.end_entry.get(), "2026-01-01")
+        with patch.object(window, "confirm_requests", return_value=False) as confirm:
+            window.submit()
+        self.assertIn("Sensores (2)", confirm.call_args.args[0])
+        self.assertIn("Sensor 0", confirm.call_args.args[0])
+        self.assertIn("Sensor 2", confirm.call_args.args[0])
+        window.show_sensors()
+        self.assertEqual(window.sensor_choice.curselection(), (0, 2))
+
+    def test_after_partial_batch_only_unsent_sensors_are_preselected(self):
+        window = self.window
+        sensors = [{"thingName": f"fake-{n}", "model": "T310"} for n in range(4)]
+        window.session = app.Session("host", "token", "terminal", "app", None, sensors)
+        window.show_sensors()
+        window.sensor_choice.selection_set(0, 3)
+        window.show_export()
+        window.report_range = "2026-01-01 a 2026-01-01 · Europe/Madrid"
+        window.show_results([("accepted", 0), ("unknown", None),
+                             ("not_sent", None), ("not_sent", None)])
+        window.show_sensors()
+        self.assertEqual(window.sensor_choice.curselection(), (2, 3))
+
+    def test_after_completed_batch_no_sensor_is_automatically_reselected(self):
+        window = self.window
+        window.session = app.Session("host", "token", "terminal", "app", None,
+                                     [{"thingName": "fake", "model": "T310"}])
+        window.show_sensors()
+        window.show_export()
+        window.report_range = "2026-01-01 a 2026-01-01 · Europe/Madrid"
+        window.show_results([("accepted", 0)])
+        window.show_sensors()
+        self.assertEqual(window.sensor_choice.curselection(), ())
 
     def test_date_picker_calendar_changes_month_and_selects_leap_day(self):
         picker = app.DatePicker(self.window.main, date(2024, 1, 31))
@@ -163,6 +229,80 @@ class DesktopWorkflowTest(unittest.TestCase):
         picker.config(state="disabled")
         picker.invoke()
         self.assertFalse(picker.popup.winfo_exists())
+
+    def test_sensor_cards_support_keyboard_selection(self):
+        picker = app.SensorChoice(self.window.main, ["Sensor A", "Sensor B", "Sensor C"])
+        picker.pack(fill="x")
+        self.window.update()
+        picker.move(1)
+        picker.toggle(picker.active)
+        self.assertEqual(picker.curselection(), (1,))
+        picker.move(1)
+        picker.toggle(picker.active)
+        self.assertEqual(picker.curselection(), (1, 2))
+        picker.move(-1)
+        picker.toggle(picker.active)
+        self.assertEqual(picker.curselection(), (2,))
+        picker.use_accessible_list()
+        self.assertEqual(picker.curselection(), (2,))
+        picker.access_list.selection_set(0)
+        self.assertEqual(picker.curselection(), (0, 2))
+
+    def test_confirmation_and_verification_dialogs_can_be_cancelled(self):
+        def close_dialog():
+            dialogs = [widget for widget in self.window.winfo_children()
+                       if isinstance(widget, tk.Toplevel)]
+            self.assertEqual(len(dialogs), 1)
+            dialogs[0].destroy()
+
+        self.window.after(50, close_dialog)
+        self.assertFalse(self.window.confirm_requests("Sensores (1):\nSensor de prueba"))
+        self.window.after(50, close_dialog)
+        self.assertEqual(self.window.prompt_verification(2), "")
+
+    def test_language_switch_preserves_form_selection_and_results(self):
+        window = self.window
+        window.email_entry.insert(0, "user@example.invalid")
+        window.password_entry.insert(0, "test-password")
+        window.change_language("en")
+        self.assertEqual(window.email_entry.get(), "user@example.invalid")
+        self.assertEqual(window.password_entry.get(), "test-password")
+        self.assertIn("not associated", window.disclaimer.cget("text"))
+        window.session = app.Session("host", "token", "terminal", "app", None,
+                                     [{"thingName": "a", "model": "T310"},
+                                      {"thingName": "b", "model": "T315"}])
+        window.show_sensors()
+        window.sensor_choice.selection_set(1)
+        window.change_language("es")
+        self.assertEqual(window.sensor_choice.curselection(), (0, 1))
+        window.show_export()
+        window.start_entry.set_date(date(2026, 1, 1))
+        window.end_entry.set_date(date(2026, 1, 10))
+        window.change_language("en")
+        self.assertEqual(window.view, "export")
+        self.assertEqual(window.start_entry.get(), "2026-01-01")
+        self.assertEqual(window.end_entry.get(), "2026-01-10")
+        self.assertEqual(window.start_entry.language, "en")
+        self.assertIn("Jan", window.start_entry.cget("text"))
+        self.assertEqual(len(window.sensors), 2)
+        window.start_entry.open_calendar()
+        self.assertEqual(window.start_entry.popup.title(), "Select date")
+        calendar_labels = [child.cget("text") for child in window.start_entry.calendar_body.winfo_children()
+                           if isinstance(child, tk.Label)]
+        self.assertIn("W", calendar_labels)
+        window.start_entry.popup.destroy()
+        window.report_range = "2026-01-01 to 2026-01-10 · Europe/Madrid"
+        window.show_results([("accepted", 0), ("not_sent", None)])
+        self.assertIn("Accepted", window.results.get("1.0", tk.END))
+        selected = list(window.selection_indices)
+        window.change_language("es")
+        self.assertEqual(window.selection_indices, selected)
+        self.assertIn("Aceptada", window.results.get("1.0", tk.END))
+
+    def test_language_switch_is_ignored_while_busy(self):
+        self.window.busy = True
+        self.window.change_language("en")
+        self.assertEqual(self.window.language, "es")
 
 
 if __name__ == "__main__":

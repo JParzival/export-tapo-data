@@ -18,7 +18,7 @@ built on a Python prototype.
 
 ## From sensors to your data
 
-The application guides you through connection, selection of a **T310 or T315** sensor, and an email report request for temperature and humidity data. The console prototype is also available. Attachments are not downloaded automatically yet.
+The application guides you through connection, selection of one or more **T310 or T315** sensors, and email report requests for temperature and humidity data. The console prototype is also available. Attachments are not downloaded automatically yet.
 
 The integration uses an internal Tapo API and a specific APK version; either may change.
 
@@ -58,8 +58,10 @@ The simulation starts a local server and does not send email or modify historica
 
 On Windows, double-click **`Abrir Tapo Data.cmd`** in the project folder. It uses the `.venv` environment if present, or the system Python otherwise. Python 3.12 or later, Tkinter and time-zone data are required; it displays a message if a requirement is missing. The command window stays open while the application is in use.
 
-The interface is currently in Spanish and does not save passwords or verification codes.
+The interface supports Spanish and English via the **ES / EN** selector and does not save passwords or verification codes. The language remains selected during the session.
+The Tapo icon is obtained from the locally verified APK; this application is independent and is not affiliated with Tapo or TP-Link.
 In the export step, select the start and end dates from the calendars; the end date is inclusive.
+You can select several sensors: one report is requested per sensor, sequentially, using the same dates and time zone. Results are displayed individually. If a request cannot be confirmed, the process stops and identifies sensors not yet sent; check your email before requesting the uncertain report again. Returning to selection automatically marks only sensors that have not yet been sent.
 Running the interface tests also requires a graphical session and a working Tk installation; those tests are skipped when Tk is unavailable.
 
 ### Request an experimental report

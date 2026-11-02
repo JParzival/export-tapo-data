@@ -8,6 +8,27 @@ import cloud_probe
 
 
 class AppWorkflowTest(unittest.TestCase):
+    def test_reports_are_sent_in_order_with_same_dates_and_rejections_do_not_stop(self):
+        sensors = [{"thingName": f"id-{i}"} for i in range(3)]
+        session = app.Session("host", "token", "terminal", "app", None, sensors)
+        body = {"startTimestamp": 1, "endTimestamp": 2}
+        progress = []
+        with patch.object(app.export_tapo, "request_report", side_effect=[0, -1, 0]) as request:
+            outcomes = app.send_reports(session, sensors, body, lambda i, n: progress.append((i, n)))
+        self.assertEqual(outcomes, [("accepted", 0), ("rejected", -1), ("accepted", 0)])
+        self.assertEqual(progress, [(1, 3), (2, 3), (3, 3)])
+        self.assertEqual([call.args[0] for call in request.call_args_list], sensors)
+        self.assertTrue(all(call.args[5] == body for call in request.call_args_list))
+
+    def test_reports_stop_after_uncertain_result_and_never_retry(self):
+        sensors = [{"thingName": f"id-{i}"} for i in range(4)]
+        session = app.Session("host", "token", "terminal", "app", None, sensors)
+        with patch.object(app.export_tapo, "request_report", side_effect=[0, TimeoutError()]) as request:
+            outcomes = app.send_reports(session, sensors, {}, lambda _i, _n: None)
+        self.assertEqual(outcomes, [("accepted", 0), ("unknown", None),
+                                    ("not_sent", None), ("not_sent", None)])
+        self.assertEqual(request.call_count, 2)
+
     def test_discovery_returns_complete_session_and_passes_mfa_prompt(self):
         prompt = lambda _: "123456"
         sensors = [{"thingName": "fake", "model": "T310"}]
