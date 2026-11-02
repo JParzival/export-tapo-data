@@ -1,0 +1,17 @@
+[project]
+name = "export-tapo-data"
+version = "0.1.0"
+description = "Prototipo para solicitar históricos de sensores Tapo"
+requires-python = ">=3.12"
+dependencies = ["tzdata>=2024.1; sys_platform == 'win32'"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"scripts/tapo_exportacion/test_*.py" = ["S101"]
