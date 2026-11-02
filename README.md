@@ -13,9 +13,6 @@ construida sobre un prototipo en Python.
 
 </div>
 
-> [!IMPORTANT]
-> **Proyecto experimental.** Se han probado el acceso, la detección de sensores y la exportación con una cuenta real. La persona usuaria confirma que el archivo se exportó correctamente y llegó a su correo. La integración depende de una API no pública que puede cambiar.
-
 ## De los sensores a tus datos
 
 La aplicación guía la conexión, la selección de uno o varios sensores **T310 o T315** y la solicitud de informes de temperatura y humedad por correo. También se conserva el prototipo de consola. Todavía no descarga los archivos adjuntos automáticamente.
