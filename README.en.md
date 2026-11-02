@@ -14,7 +14,7 @@ built on a Python prototype.
 </div>
 
 > [!IMPORTANT]
-> **Experimental project.** Cloud login and sensor discovery have been tested with a real account, but **the export request and file contents have not yet been validated against the real service**. Local tests do not replace that validation.
+> **Experimental project.** Login, sensor discovery, and export have been tested with a real account. The user confirms that the file was exported correctly and delivered by email. The integration relies on a non-public API that may change.
 
 ## From sensors to your data
 
@@ -28,15 +28,17 @@ The integration uses an internal Tapo API and a specific APK version; either may
 | --- | --- |
 | Cloud login and sensor discovery | Tested with a real account |
 | Local simulation and tests | Available |
-| Export request and received file | Real-world validation pending |
-| Desktop application | Available; real export workflow awaits validation |
+| Export request and received file | Confirmed |
+| Desktop application | Available; real export tested |
 | Automatic attachment download | Not yet implemented |
 
-The next technical milestone is to validate a real export and compare the received file with a manual download. Credentials and personal data must stay out of the repository.
+This confirms the tested case, not every sensor, date range, or scenario. Credentials and personal data must stay out of the repository.
 
 ## Getting started
 
-You need **Python 3.12 or later**. To connect to Tapo's IoT services, place the verified Tapo 3.22.105 APK at `assets/tapo/tapo-3.22.105.apk`; the prototype checks its SHA-256 fingerprint before use. The APK is excluded from Git and is not included when cloning the repository. The local simulation and tests need neither an APK nor an account.
+On Windows, double-click **`launch_app.cmd`** in the project folder. You need **Python 3.12 or later**, Tkinter, and time-zone data. The launcher uses `.venv` if present or the system Python otherwise, and displays a message if a requirement is missing. The command window stays open while the application runs.
+
+To connect to Tapo, place the Tapo 3.22.105 APK at `assets/tapo/tapo-3.22.105.apk`; the program checks its SHA-256 fingerprint. The APK is not distributed with the repository. See the [user guide](docs/USAGE.en.md) for environment setup, APK verification, and troubleshooting. The simulation and tests need neither an APK nor an account.
 
 From the repository root in PowerShell:
 
@@ -56,10 +58,8 @@ The simulation starts a local server and does not send email or modify historica
 
 ### Open the application
 
-On Windows, double-click **`Abrir Tapo Data.cmd`** in the project folder. It uses the `.venv` environment if present, or the system Python otherwise. Python 3.12 or later, Tkinter and time-zone data are required; it displays a message if a requirement is missing. The command window stays open while the application is in use.
-
 The interface supports Spanish and English via the **ES / EN** selector and does not save passwords or verification codes. The language remains selected during the session.
-The Tapo icon is obtained from the locally verified APK; this application is independent and is not affiliated with Tapo or TP-Link.
+The icon may be loaded from a local file or extracted from the checked APK; these assets are not distributed with the repository. This application is independent and is not affiliated with Tapo or TP-Link.
 In the export step, select the start and end dates from the calendars; the end date is inclusive.
 You can select several sensors: one report is requested per sensor, sequentially, using the same dates and time zone. Results are displayed individually. If a request cannot be confirmed, the process stops and identifies sensors not yet sent; check your email before requesting the uncertain report again. Returning to selection automatically marks only sensors that have not yet been sent.
 Running the interface tests also requires a graphical session and a working Tk installation; those tests are skipped when Tk is unavailable.
@@ -77,7 +77,15 @@ The program asks for credentials and, when needed, a verification code without s
 
 ## Documentation
 
+- [User guide](docs/USAGE.en.md): setup, the application, privacy, and troubleshooting.
+- [Contributing guide](CONTRIBUTING.en.md): structure, development, and tests.
 - [Prototype guide](scripts/tapo_exportacion/README.en.md): simulation, access, real requests, and limitations.
 - `scripts/tapo_exportacion/`: console code and tests.
-- `AGENTS.md` and `docs/agent-guides/`: repository working instructions.
+- `AGENTS.md` and `docs/agent-guides/`: internal repository working instructions, in English.
 - `pyproject.toml` and `requirements.txt`: metadata, configuration, and the Windows time-zone dependency.
+
+## License
+
+The project software is offered under the [PolyForm Noncommercial License 1.0.0](LICENSE). It permits use, modification, and distribution for purposes allowed by the license, including noncommercial purposes; the text also expressly permits certain organizations and uses. Commercial purposes outside its permissions require separate authorization from the relevant rights holders.
+
+The software is source-available, but its commercial restriction means it is not open source under the Open Source Initiative definition. The project license does not grant rights to the Tapo APK, trademarks, or other third-party materials. The original English text in `LICENSE` governs over this summary.

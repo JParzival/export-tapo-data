@@ -107,7 +107,7 @@ def interactive_export(email: str):
             return
         if code == 0:
             print("Tapo ha aceptado la solicitud. Comprueba el correo de tu cuenta; "
-                  "la recepción y el contenido del archivo aún no están verificados.")
+                  "la recepción y el contenido del archivo no se comprueban automáticamente.")
         else:
             print(f"Tapo ha rechazado la solicitud de exportación: código {code}.")
     return run

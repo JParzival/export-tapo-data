@@ -5,7 +5,7 @@
 A guide to running the simulation, checking access, and requesting an experimental report from the console. Console prompts are currently in Spanish.
 
 > [!IMPORTANT]
-> Cloud access and sensor discovery have been tested with a real account. The export request and file contents **still need real-world validation**. Tapo's internal API may change.
+> Cloud access, sensor discovery, and an export from the application have been tested with a real account. The user confirms that the file exported correctly and arrived by email. Tapo's internal API may change.
 
 ## 1. Local simulation
 
@@ -18,9 +18,9 @@ From the repository root, using the project environment:
 .\.venv\Scripts\python.exe -m unittest discover -s scripts\tapo_exportacion -v
 ```
 
-The flow, model fields, and endpoint path come from static analysis of Tapo 3.22.105 using REA. The HTTP POST method, exact JSON serialization, authentication, response, and real server restrictions are unverified. Acceptance by the simulated server does not prove Tapo will accept the request. The `.invalid` address and sensor identifier are fictional.
+The flow, model fields, and endpoint path come from static analysis of Tapo 3.22.105 using REA. Acceptance by the simulated server does not prove Tapo will accept a request. The `.invalid` address and sensor identifier are fictional.
 
-Cloud access and a list of six sensors have been checked with the user's account. The real export and file contents still need to be checked against a manual download.
+The user has confirmed a real export from the application and correct receipt of the file. This test does not establish behavior for all possible requests.
 
 ## 2. Experimental export request
 
@@ -32,7 +32,7 @@ From the repository root:
 
 The program signs in, asks for additional verification when required, and lists T310/T315 sensors. Select a sensor and up to 31 inclusive calendar dates. Today is allowed, so its data may be incomplete. The default time zone is `Europe/Madrid`; choose the sensor's zone if different. The requested resolution is 60 seconds. The 31-day limit is a prototype restriction, not a verified server limit.
 
-The request is sent to the account's own email only after typing `SI`. It is sent once and never retried automatically. Acceptance does not confirm email delivery or a complete file. If a connection error occurs during submission, check your email before trying again: Tapo may already have received the request. Attachments are not automatically downloaded or saved.
+The request is addressed to the account's own email only after typing `SI`. The client sends at most one request and never retries automatically; if the connection fails, receipt by Tapo is uncertain. Acceptance does not confirm email delivery or a complete file. Check your email before trying again. Attachments are not automatically downloaded or saved.
 
 ## 3. Check access from your computer
 
